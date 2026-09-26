@@ -1,0 +1,52 @@
+name: release
+
+# Every push to main / PR: build + test all archives.
+# Pushing a tag (e.g. 20260526): also publish them as a GitHub release.
+# Manual run with ncnn_ref: build + test that ncnn tag/branch/commit instead of the
+# release pinned in ncnn.version; archives are downloadable from the run, never released.
+on:
+  push:
+    branches: [main]
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ncnn_ref:
+        description: 'ncnn tag, branch or commit to build instead of ncnn.version (empty = pinned release)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    uses: ./.github/workflows/build-test.yml
+    with:
+      ncnn_ref: ${{ inputs.ncnn_ref || '' }}
+
+  release:
+    # only tag pushes of the pinned ncnn; ncnn_ref runs are never published
+    if: startsWith(github.ref, 'refs/tags/') && !inputs.ncnn_ref
+    needs: build-test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          cat ./*.sha256 > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "ncnn $GITHUB_REF_NAME (Zig $(cat ../.zigversion))" \
+            --notes "Static ncnn libraries built with Zig $(cat ../.zigversion). Each archive's BUILDINFO lists the exact ncnn commit, target and CMake flags. Verify downloads with SHA256SUMS." \
+            ./*.tar.gz SHA256SUMS

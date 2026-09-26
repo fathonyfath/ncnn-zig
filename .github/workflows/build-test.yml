@@ -1,0 +1,83 @@
+name: build-test
+
+# Reusable: build every archive and smoke-test it. Called by release.yml and update-ncnn.yml.
+# ncnn_ref: build that ncnn tag/branch/commit instead of the release pinned in ncnn.version.
+on:
+  workflow_call:
+    inputs:
+      ncnn_ref:
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [cpu, gpu]
+        target: [x86_64-linux-gnu.2.28]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: zig version
+        id: zig
+        run: echo "version=$(cat .zigversion)" >> "$GITHUB_OUTPUT"
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ steps.zig.outputs.version }}
+          cache-key: ${{ matrix.variant }}-${{ matrix.target }}
+
+      # fetches ncnn at the release pinned in ncnn.version, or at ncnn_ref if given
+      - name: build
+        env:
+          NCNN_REF: ${{ inputs.ncnn_ref }}
+        run: ./build.sh ${{ matrix.variant }} ${{ matrix.target }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ncnn-${{ matrix.variant }}-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  # test on an older distro than the build machine: the archives must not depend on it
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [cpu, gpu]
+        target: [x86_64-linux-gnu.2.28]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: zig version
+        id: zig
+        run: echo "version=$(cat .zigversion)" >> "$GITHUB_OUTPUT"
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ steps.zig.outputs.version }}
+          cache-key: test-${{ matrix.variant }}-${{ matrix.target }}
+
+      # runners have no GPU: lavapipe (Mesa's software Vulkan) exercises the Vulkan path
+      - name: vulkan (lavapipe)
+        if: matrix.variant == 'gpu'
+        run: sudo apt-get update && sudo apt-get install -y libvulkan1 mesa-vulkan-drivers
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ncnn-${{ matrix.variant }}-${{ matrix.target }}
+          path: dist
+
+      - name: smoke test
+        env:
+          REQUIRE_VULKAN: ${{ matrix.variant == 'gpu' && '1' || '0' }}
+        run: |
+          cd dist && sha256sum -c ./*.sha256 && cd ..
+          ./test/run.sh dist/*.tar.gz
