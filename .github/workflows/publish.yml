@@ -57,9 +57,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.prepare.outputs.tag }}
         run: |
+          ./.github/release-notes.sh "$TAG" dist "$GITHUB_REPOSITORY" "$GITHUB_SHA" > notes.md
           cd dist
           cat ./*.sha256 > SHA256SUMS
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "ncnn-zig $TAG (Zig $(cat ../.zigversion))" \
-            --notes "Static ncnn $(sed -n 's/^tag=//p' ../ncnn.version) libraries, build $TAG, compiled with Zig $(cat ../.zigversion). Each archive's BUILDINFO lists the exact ncnn commit, target and CMake flags. Verify downloads with SHA256SUMS." \
+            --title "$TAG (ncnn $(sed -n 's/^tag=//p' ../ncnn.version), Zig $(cat ../.zigversion))" \
+            --notes-file ../notes.md \
             ./*.tar.gz SHA256SUMS
