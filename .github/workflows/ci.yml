@@ -1,4 +1,4 @@
-name: ci
+name: Build
 
 # Every push to main / PR: build + test all archives (attached to the run).
 # Manual run with ncnn_ref: build + test that ncnn tag/branch/commit instead of the
@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   build-test:
+    name: Build and Test
     uses: ./.github/workflows/build-test.yml
     with:
       ncnn_ref: ${{ inputs.ncnn_ref || '' }}

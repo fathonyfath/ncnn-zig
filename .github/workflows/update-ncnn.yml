@@ -1,4 +1,4 @@
-name: update-ncnn
+name: Update NCNN
 
 # Daily: if Tencent/ncnn has a newer release than ncnn.version, build + test it
 # and open a PR that updates ncnn.version to that tag. Merge it, then run the publish workflow.
@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   check:
+    name: Check for New Release
     runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.check.outputs.tag }}
@@ -41,6 +42,7 @@ jobs:
 
   # same build + test as a normal push, against the new tag
   build-test:
+    name: Build and Test
     needs: check
     if: needs.check.outputs.tag != ''
     uses: ./.github/workflows/build-test.yml
@@ -48,6 +50,7 @@ jobs:
       ncnn_ref: ${{ needs.check.outputs.tag }}
 
   pr:
+    name: Open PR
     needs: [check, build-test]
     runs-on: ubuntu-24.04
     permissions:
@@ -76,4 +79,4 @@ jobs:
             "Build + smoke tests already passed for this tag: $RUN_URL" \
             "(PRs opened by GitHub Actions don't trigger CI on their own.)" \
             "" \
-            "After merging, publish it: Actions → publish → Run workflow (creates $TAG.1).")"
+            "After merging, publish it: Actions → Publish → Run workflow (creates $TAG.1).")"

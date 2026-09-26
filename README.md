@@ -62,13 +62,13 @@ NCNN_REF=master ./build.sh gpu x86_64-linux-gnu.2.28
 # -> dist/ncnn-master-20260924-c6b351b-gpu-x86_64-linux-gnu.2.28.tar.gz
 ```
 
-In CI: Actions → ci → Run workflow, with `ncnn_ref` set. The archives are attached to that run;
+In CI: Actions → Build → Run workflow, with `ncnn_ref` set. The archives are attached to that run;
 off-release builds are never published as releases.
 
 ## Updating ncnn
 
 A daily workflow (`update-ncnn.yml`) checks for new ncnn releases. When there is one, it builds and
-tests it, then opens a PR that updates `ncnn.version`. Merge the PR, then run **publish** (below).
+tests it, then opens a PR that updates `ncnn.version`. Merge the PR, then run **Publish** (below).
 
 To update by hand, edit `ncnn.version`:
 
@@ -79,7 +79,7 @@ commit=<commit the tag points at>
 
 ## Releasing
 
-Actions → publish → Run workflow (on `main`). It builds and tests the release pinned in
+Actions → Publish → Run workflow (on `main`). It builds and tests the release pinned in
 `ncnn.version`, then creates the tag at that commit and a GitHub release with the archives and
 `SHA256SUMS`.
 
