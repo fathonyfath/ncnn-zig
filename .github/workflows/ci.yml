@@ -1,0 +1,24 @@
+name: ci
+
+# Every push to main / PR: build + test all archives (attached to the run).
+# Manual run with ncnn_ref: build + test that ncnn tag/branch/commit instead of the
+# release pinned in ncnn.version. Nothing here publishes; see publish.yml.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ncnn_ref:
+        description: 'ncnn tag, branch or commit to build instead of ncnn.version (empty = pinned release)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    uses: ./.github/workflows/build-test.yml
+    with:
+      ncnn_ref: ${{ inputs.ncnn_ref || '' }}

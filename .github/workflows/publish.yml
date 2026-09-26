@@ -1,0 +1,62 @@
+name: publish
+
+# Manual: build + test the ncnn release pinned in ncnn.version, then create the tag and the
+# GitHub release (with archives + SHA256SUMS) at the commit this runs on. Only from main.
+# Release tags are <ncnn tag>.<build count>: the first build of ncnn 20260526 is 20260526.1,
+# a rebuild (new Zig, flags, targets, ...) is 20260526.2, and so on.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: next build number
+        id: tag
+        run: |
+          base=$(sed -n 's/^tag=//p' ncnn.version)
+          last=$(git ls-remote --tags origin "refs/tags/$base.*" |
+            sed -n "s|.*refs/tags/$base\.\([0-9][0-9]*\)$|\1|p" | sort -n | tail -1)
+          tag=$base.$(( ${last:-0} + 1 ))
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "will publish $tag at $GITHUB_SHA"
+
+  build-test:
+    needs: prepare
+    uses: ./.github/workflows/build-test.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag }}
+
+  release:
+    needs: [prepare, build-test]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      # creates the tag at this commit together with the release
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          cd dist
+          cat ./*.sha256 > SHA256SUMS
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "ncnn-zig $TAG (Zig $(cat ../.zigversion))" \
+            --notes "Static ncnn $(sed -n 's/^tag=//p' ../ncnn.version) libraries, build $TAG, compiled with Zig $(cat ../.zigversion). Each archive's BUILDINFO lists the exact ncnn commit, target and CMake flags. Verify downloads with SHA256SUMS." \
+            ./*.tar.gz SHA256SUMS

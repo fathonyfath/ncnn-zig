@@ -62,14 +62,13 @@ NCNN_REF=master ./build.sh gpu x86_64-linux-gnu.2.28
 # -> dist/ncnn-master-20260924-c6b351b-gpu-x86_64-linux-gnu.2.28.tar.gz
 ```
 
-In CI: Actions → release → Run workflow, with `ncnn_ref` set. The archives are attached to that run;
+In CI: Actions → ci → Run workflow, with `ncnn_ref` set. The archives are attached to that run;
 off-release builds are never published as releases.
 
 ## Updating ncnn
 
 A daily workflow (`update-ncnn.yml`) checks for new ncnn releases. When there is one, it builds and
-tests it, then opens a PR that updates `ncnn.version`. Merge the PR, then publish with
-`git tag <tag> && git push origin <tag>`.
+tests it, then opens a PR that updates `ncnn.version`. Merge the PR, then run **publish** (below).
 
 To update by hand, edit `ncnn.version`:
 
@@ -80,15 +79,26 @@ commit=<commit the tag points at>
 
 ## Releasing
 
-Pushing a tag builds, tests and publishes the archives plus `SHA256SUMS` as a GitHub release.
-Use the ncnn version as the tag (e.g. `20260526`), or `20260526-2` for a rebuild of the same version.
+Actions → publish → Run workflow (on `main`). It builds and tests the release pinned in
+`ncnn.version`, then creates the tag at that commit and a GitHub release with the archives and
+`SHA256SUMS`.
+
+Releases are versioned `<ncnn tag>.<build count>`, picked automatically:
+
+| Situation                                   | Release        | Archive                                      |
+|---------------------------------------------|----------------|----------------------------------------------|
+| First build of ncnn `20260526`              | `20260526.1`   | `ncnn-20260526.1-gpu-x86_64-linux-gnu.2.28…` |
+| Rebuild of the same ncnn (Zig, flags, …)    | `20260526.2`   | `ncnn-20260526.2-gpu-x86_64-linux-gnu.2.28…` |
+| ncnn updated to `20261015`                  | `20261015.1`   | `ncnn-20261015.1-gpu-x86_64-linux-gnu.2.28…` |
+
+Earlier releases are never changed, so their URLs and `build.zig.zon` hashes stay valid.
 
 ## Using from Zig
 
 Add the archive for your target to `build.zig.zon`:
 
 ```sh
-zig fetch --save=ncnn_gpu_x86_64_linux <release-url>/ncnn-<version>-gpu-x86_64-linux-gnu.2.28.tar.gz
+zig fetch --save=ncnn_gpu_x86_64_linux https://github.com/fathonyfath/ncnn-zig/releases/download/<release>/ncnn-<release>-gpu-x86_64-linux-gnu.2.28.tar.gz
 ```
 
 Then in `build.zig`:

@@ -1,11 +1,15 @@
 name: build-test
 
-# Reusable: build every archive and smoke-test it. Called by release.yml and update-ncnn.yml.
+# Reusable: build every archive and smoke-test it. Called by ci.yml, publish.yml and update-ncnn.yml.
 # ncnn_ref: build that ncnn tag/branch/commit instead of the release pinned in ncnn.version.
 on:
   workflow_call:
     inputs:
       ncnn_ref:
+        type: string
+        default: ''
+      # <ncnn tag>.<build count>, set by publish.yml; names the archives after the release
+      release_tag:
         type: string
         default: ''
 
@@ -36,6 +40,7 @@ jobs:
       - name: build
         env:
           NCNN_REF: ${{ inputs.ncnn_ref }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: ./build.sh ${{ matrix.variant }} ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v7

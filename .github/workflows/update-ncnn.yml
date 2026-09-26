@@ -1,7 +1,7 @@
 name: update-ncnn
 
 # Daily: if Tencent/ncnn has a newer release than ncnn.version, build + test it
-# and open a PR that updates ncnn.version to that tag. Merge it, then push a tag to release.
+# and open a PR that updates ncnn.version to that tag. Merge it, then run the publish workflow.
 on:
   schedule:
     - cron: '17 3 * * *'  # daily, 03:17 UTC
@@ -76,4 +76,4 @@ jobs:
             "Build + smoke tests already passed for this tag: $RUN_URL" \
             "(PRs opened by GitHub Actions don't trigger CI on their own.)" \
             "" \
-            "After merging, publish with: \`git tag $TAG && git push origin $TAG\`")"
+            "After merging, publish it: Actions → publish → Run workflow (creates $TAG.1).")"

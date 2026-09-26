@@ -8,6 +8,7 @@
 # ncnn is fetched into ./ncnn at the release pinned in ncnn.version (tag + commit, verified).
 # NCNN_REF=<tag|branch|commit> builds that ref instead; anything that isn't a release tag is
 # labelled <ref>-<commit date>-<short sha>, e.g. master-20260924-c6b351b.
+# RELEASE_TAG=<ncnn tag>.<n> (publish workflow) names the archives after that release, e.g. 20260526.1.
 #
 # Needs: git, cmake, zig (pinned in .zigversion), tar+gzip (zip for windows targets), sha256sum.
 # Output: dist/ncnn-<label>-<variant>-<target>.{tar.gz,zip} (+ .sha256)
@@ -89,6 +90,17 @@ else
     echo "note: $REF is not a release tag; building as $NCNN_LABEL" >&2
 fi
 
+# RELEASE_TAG=<ncnn tag>.<build count> (set by the publish workflow) names the archives after our release
+RELEASE_TAG=${RELEASE_TAG:-}
+if [ -n "$RELEASE_TAG" ]; then
+    [ -n "$NCNN_TAG" ] || die "RELEASE_TAG needs ncnn on a release tag"
+    case "$RELEASE_TAG" in
+        "$NCNN_TAG".[1-9]*) ;;
+        *) die "RELEASE_TAG $RELEASE_TAG doesn't match ncnn $NCNN_TAG (expected $NCNN_TAG.<n>)" ;;
+    esac
+    NCNN_LABEL=$RELEASE_TAG
+fi
+
 NAME=ncnn-$NCNN_LABEL-$VARIANT-$TARGET
 BUILD=$ROOT/build/$VARIANT-$TARGET
 OUT=$ROOT/out/$NAME
@@ -130,8 +142,8 @@ cp "$SRC/LICENSE.txt" "$OUT/LICENSES/ncnn.txt"
 [ "$VARIANT" = gpu ] && cp "$SRC/glslang/LICENSE.txt" "$OUT/LICENSES/glslang.txt"
 
 cat > "$OUT/BUILDINFO" <<EOF
-ncnn:     $NCNN_LABEL ($NCNN_COMMIT)
-release:  $([ -n "$NCNN_TAG" ] && echo yes || echo "no (off-release build)")
+ncnn:     ${NCNN_TAG:-$REF} ($NCNN_COMMIT)
+release:  $(if [ -n "$RELEASE_TAG" ]; then echo "$RELEASE_TAG"; elif [ -n "$NCNN_TAG" ]; then echo "none (unpublished build)"; else echo "none (off-release ncnn)"; fi)
 variant:  $VARIANT
 target:   $TARGET
 zig:      $ZIG_VERSION
